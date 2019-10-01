@@ -1,68 +1,130 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# React's Context API
 
-## Available Scripts
+> Context provides a way to pass data through the component tree without having to pass props down manually at every level.
 
-In the project directory, you can run:
+🚨 Use Context only when some data needs to be accessed by **many components at different nesting levels**. Apply it sparingly because it makes component reuse more difficult. 🚨
 
-### `npm start`
+### Context creation
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+<small>src/Context/NameContext.js</small>
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+```js
+import { createContext } from 'react';
+import { noop } from '../utils';
 
-### `npm test`
+/**
+ * defaultValue only used when a component does not have a matching
+ * Provider above it in the tree
+ */
+const defaultValue = {
+  name: 'Initial name',
+  updateName: noop
+};
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+const NamedContext = createContext(defaultValue);
+export default NamedContext;
+```
 
-### `npm run build`
+### Providing data through Context
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+<small>src/Components/App.js</small>
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+```js
+import React, { Component } from 'react';
+import NameContext from '../Context/NameContext';
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+import Name from './Name';
+import NameConsumer from './NameConsumer';
 
-### `npm run eject`
+class App extends Component {
+  updateName = () => {
+    this.setState(state => {
+      return {
+        name: 'Doe'
+      };
+    });
+  };
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+  state = {
+    name: 'John',
+    updateName: this.updateName
+  };
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+  render() {
+    return (
+      // Context.Provider takes the responsibility in passing data to its nested components and those data are passed through its value prop
+      <NameContext.Provider value={{ ...this.state }}>
+        <Name />
+        <NameConsumer />
+      </NameContext.Provider>
+    );
+  }
+}
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+export default App;
+```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Consuming data from Context
 
-## Learn More
+Consumption of data can be done in two ways:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. through `static contextType` property _(Class.contextType)_
+2. through Context's `Consumer` component _(Context.Consumer)_
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+#### through Class.contextType
 
-### Code Splitting
+_You can only subscribe to a single context using this API_
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
+<small>src/Components/Name.js</small>
 
-### Analyzing the Bundle Size
+```js
+import React, { Component } from 'react';
+import NameContext from '../Context/NameContext';
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
+class Name extends Component {
+  // contextType passes the data from provider through context (this.context) property of consuming class.
+  static contextType = NameContext;
 
-### Making a Progressive Web App
+  render() {
+    return (
+      <>
+        {this.context.name}
+        <button onClick={this.context.updateName}>Change name</button>
+      </>
+    );
+  }
+}
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
+export default Name;
+```
 
-### Advanced Configuration
+#### through Context.Consumer
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
+<small>src/Components/NameConsumer.js</small>
 
-### Deployment
+`Context.Consumer` makes use of [render props component pattern](https://github.com/pranesh239/react-component-patterns/tree/render-props) to provide data
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
+```js
+import React, { Component } from 'react';
+import NameContext from '../Context/NameContext';
 
-### `npm run build` fails to minify
+class NameConsumer extends Component {
+  state = {};
+  render() {
+    return (
+      <NameContext.Consumer>
+        {({ name, updateName }) => {
+          return (
+            <>
+              <h1>{name}</h1>
+              <button onClick={updateName}>Change name through consumer</button>
+            </>
+          );
+        }}
+      </NameContext.Consumer>
+    );
+  }
+}
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+export default NameConsumer;
+```
